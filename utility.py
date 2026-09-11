@@ -1,7 +1,6 @@
 import requests
 from datetime import datetime
 
-# Weather Code Mapping to Condition Text & Animated Iconify Icons
 WEATHER_MAP = {
     0: {"cond": "Clear sky", "icon": "meteocons:clear-day-fill"},
     1: {"cond": "Mainly clear", "icon": "meteocons:clear-day-fill"},
@@ -18,10 +17,18 @@ WEATHER_MAP = {
 }
 
 def get_weather(city_name):
-    # Geocoding
-    geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city_name}&count=1&language=en&format=json"
+    # Geocoding using proper params for URL encoding (Fixes multi-word cities)
+    geo_url = "https://geocoding-api.open-meteo.com/v1/search"
+    geo_params = {
+        "name": city_name,
+        "count": 1,
+        "language": "en",
+        "format": "json"
+    }
+    
     try:
-        geo_res = requests.get(geo_url).json()
+        # Added timeout to prevent 502 Bad Gateway errors
+        geo_res = requests.get(geo_url, params=geo_params, timeout=5).json()
     except Exception:
         return None
 
@@ -33,10 +40,19 @@ def get_weather(city_name):
     if lat is None or lon is None:
         return None
 
-    # Weather Forecast Request
-    w_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,surface_pressure,wind_speed_10m,visibility&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto"
+    # Weather Forecast Request using proper params
+    w_url = "https://api.open-meteo.com/v1/forecast"
+    w_params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,surface_pressure,wind_speed_10m,visibility",
+        "hourly": "temperature_2m,weather_code",
+        "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+        "timezone": "auto"
+    }
+    
     try:
-        res = requests.get(w_url).json()
+        res = requests.get(w_url, params=w_params, timeout=5).json()
     except Exception:
         return None
 
