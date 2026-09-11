@@ -18,7 +18,10 @@ def home():
 
   # Handle case where city is invalid or API fails
   if weather is None:
-    error = f"Could not find weather for '{city}'. Showing Jaipur instead."
+    # Only show error if the user actually searched for something invalid
+    if request.method == "POST":
+      error = f"Could not find weather for '{city}'. Showing Jaipur instead."
+    
     weather = get_weather("Jaipur")
 
     # Ultimate fallback if even Jaipur fails for some network reason
