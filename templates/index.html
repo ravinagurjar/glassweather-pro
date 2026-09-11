@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlassWeather Pro</title>
+    <!-- Google Fonts & Lucide Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Iconify Web Component for Animated Weather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/iconify-icon@3.0.2/dist/iconify-icon.min.js"></script>
+
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-card: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-color: #6366f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-primary);
+            padding: 1.5rem;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 450px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .search-bar input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 0.95rem;
+            width: 100%;
+            padding: 0.5rem;
+        }
+
+        .search-bar button {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+
+        .search-bar button:hover {
+            color: #fff;
+        }
+
+        .error-msg {
+            color: #f87171;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        /* Weather Main Display */
+        .weather-hero {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .animated-icon {
+            font-size: 140px;
+            margin: 0 auto;
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.3));
+        }
+
+        .location {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .temp-display {
+            font-size: 4rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            letter-spacing: -2px;
+            background: linear-gradient(180deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .condition {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        /* Stats Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .metric-icon {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.6rem;
+            border-radius: 12px;
+            display: flex;
+            color: var(--accent-color);
+        }
+
+        .metric-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .metric-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        /* Hourly & Daily Forecast Styles */
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 1.5rem 0 0.8rem;
+            font-weight: 600;
+        }
+
+        .hourly-scroll {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            scrollbar-width: none;
+        }
+        
+        .hourly-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hourly-item {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 0.8rem 1.2rem;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .hourly-item iconify-icon {
+            font-size: 32px;
+            margin: 0.5rem 0;
+        }
+        
+        .hourly-item p { font-size: 0.8rem; color: var(--text-secondary); }
+        .hourly-item h4 { font-size: 1.1rem; }
+
+        .daily-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .daily-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+        }
+        
+        .daily-item-day { width: 30%; font-weight: 500; font-size: 0.95rem; }
+        .daily-item iconify-icon { font-size: 24px; width: 20%; text-align: center; }
+        .daily-item-temps { width: 50%; text-align: right; font-size: 0.95rem; }
+        .daily-item-temps span { color: var(--text-secondary); margin-left: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <!-- Search -->
+        <form action="/" method="POST" class="search-bar">
+            <input type="text" name="city" placeholder="Search city..." required autocomplete="off">
+            <button type="submit"><i data-lucide="search"></i></button>
+        </form>
+
+        {% if error %}
+            <p class="error-msg">{{ error }}</p>
+        {% endif %}
+
+        {% if weather %}
+            <!-- Main Display -->
+            <div class="weather-hero">
+                <!-- Iconify Web Component -->
+                <iconify-icon icon="{{ weather.icon }}" class="animated-icon"></iconify-icon>
+                
+                <div class="location">
+                    <i data-lucide="map-pin" size="20" color="#6366f1"></i>
+                    {{ weather.city }}
+                </div>
+
+                <div class="temp-display">{{ weather.temp }}°</div>
+                <div class="condition">{{ weather.condition }}</div>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon"><i data-lucide="thermometer"></i></div>
+                    <div class="metric-info">
+                        <p>Feels Like</p>
+                        <h4>{{ weather.feels_like }}°C</h4>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon"><i data-lucide="droplets"></i></div>
+                    <div class="metric-info">
+                        <p>Humidity</p>
+                        <h4>{{ weather.humidity }}%</h4>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon"><i data-lucide="wind"></i></div>
+                    <div class="metric-info">
+                        <p>Wind</p>
+                        <h4>{{ weather.wind }} km/h</h4>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon"><i data-lucide="gauge"></i></div>
+                    <div class="metric-info">
+                        <p>Pressure</p>
+                        <h4>{{ weather.pressure }} hPa</h4>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hourly Forecast Scroll -->
+            <h3 class="section-title">Today</h3>
+            <div class="hourly-scroll">
+                {% for hour in weather.hourly %}
+                <div class="hourly-item">
+                    <p>{{ hour.time }}</p>
+                    <iconify-icon icon="{{ hour.icon }}"></iconify-icon>
+                    <h4>{{ hour.temp }}°</h4>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 6-Day Forecast List -->
+            <h3 class="section-title">Next 6 Days</h3>
+            <div class="daily-list">
+                {% for day in weather.forecast %}
+                <div class="daily-item">
+                    <div class="daily-item-day">{{ day.day_name }}</div>
+                    <iconify-icon icon="{{ day.icon }}"></iconify-icon>
+                    <div class="daily-item-temps">
+                        {{ day.max_temp }}° <span>{{ day.min_temp }}°</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        {% endif %}
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
