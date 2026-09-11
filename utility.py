@@ -16,38 +16,54 @@ WEATHER_MAP = {
     95: {"cond": "Thunderstorm", "icon": "meteocons:thunderstorms-fill"}
 }
 
+# Preset coordinates for major cities to bypass cloud server geocoding blocks
+COMMON_CITIES = {
+    "jaipur": {"lat": 26.9124, "lon": 75.7873, "name": "Jaipur"},
+    "mumbai": {"lat": 19.0760, "lon": 72.8777, "name": "Mumbai"},
+    "delhi": {"lat": 28.6139, "lon": 77.2090, "name": "Delhi"},
+    "new york": {"lat": 40.7128, "lon": -74.0060, "name": "New York"},
+    "london": {"lat": 51.5074, "lon": -0.1278, "name": "London"},
+    "tokyo": {"lat": 35.6762, "lon": 139.6503, "name": "Tokyo"},
+    "bangalore": {"lat": 12.9716, "lon": 77.5946, "name": "Bangalore"},
+    "pune": {"lat": 18.5204, "lon": 73.8567, "name": "Pune"}
+}
+
 def get_weather(city_name):
-    # Add a custom User-Agent. Open-Meteo blocks default "python-requests" 
-    # from cloud servers like Render to prevent spam.
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    cleaned_city = city_name.strip().lower()
+    lat, lon, resolved_name = None, None, city_name
 
-    # 1. Geocoding
-    geo_url = "https://geocoding-api.open-meteo.com/v1/search"
-    geo_params = {
-        "name": city_name,
-        "count": 1,
-        "language": "en",
-        "format": "json"
-    }
-    
-    try:
-        geo_res = requests.get(geo_url, params=geo_params, headers=headers, timeout=10).json()
-    except Exception as e:
-        print(f"Geocoding Error for {city_name}: {e}")
-        return None
+    # Check if it's in our common cities fallback first (bypasses cloud blocks)
+    if cleaned_city in COMMON_CITIES:
+        lat = COMMON_CITIES[cleaned_city]["lat"]
+        lon = COMMON_CITIES[cleaned_city]["lon"]
+        resolved_name = COMMON_CITIES[cleaned_city]["name"]
+    else:
+        # Otherwise, try the live geocoding API
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+        geo_url = "https://geocoding-api.open-meteo.com/v1/search"
+        geo_params = {
+            "name": city_name,
+            "count": 1,
+            "language": "en",
+            "format": "json"
+        }
+        
+        try:
+            geo_res = requests.get(geo_url, params=geo_params, headers=headers, timeout=10).json()
+            if geo_res and geo_res.get("results"):
+                loc = geo_res["results"][0]
+                lat = loc.get("latitude")
+                lon = loc.get("longitude")
+                resolved_name = loc.get("name", city_name)
+        except Exception as e:
+            print(f"Geocoding Error: {e}")
 
-    if not geo_res or not geo_res.get("results"):
-        print(f"No geocoding results found for {city_name}")
-        return None
+        if lat is None or lon is None:
+            return None
 
-    loc = geo_res["results"][0]
-    lat, lon = loc.get("latitude"), loc.get("longitude")
-    if lat is None or lon is None:
-        return None
-
-    # 2. Weather Forecast
+    # Weather Forecast Request
     w_url = "https://api.open-meteo.com/v1/forecast"
     w_params = {
         "latitude": lat,
@@ -59,13 +75,13 @@ def get_weather(city_name):
     }
     
     try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         res = requests.get(w_url, params=w_params, headers=headers, timeout=10).json()
     except Exception as e:
-        print(f"Weather API Error for {city_name}: {e}")
+        print(f"Weather API Error: {e}")
         return None
 
     if not res or "current" not in res or "daily" not in res:
-        print(f"Invalid weather data structure returned for {city_name}")
         return None
 
     current = res["current"]
@@ -97,8 +113,7 @@ def get_weather(city_name):
                 "min_temp": round(min_t) if min_t is not None else 0,
                 "icon": day_w["icon"]
             })
-        except Exception as e:
-            print(f"Error processing daily forecast day {i}: {e}")
+        except Exception:
             continue
 
     # Process Hourly Forecast Timeline
@@ -143,7 +158,7 @@ def get_weather(city_name):
     max_temp_val = daily.get("temperature_2m_max", [0])[0]
 
     return {
-        "city": loc.get("name", city_name),
+        "city": resolved_name,
         "temp": round(temp_val) if temp_val is not None else 0,
         "feels_like": round(feels_val) if feels_val is not None else 0,
         "condition": w_info["cond"],
