@@ -17,7 +17,13 @@ WEATHER_MAP = {
 }
 
 def get_weather(city_name):
-    # Geocoding using proper params for URL encoding (Fixes multi-word cities)
+    # Add a custom User-Agent. Open-Meteo blocks default "python-requests" 
+    # from cloud servers like Render to prevent spam.
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
+    # 1. Geocoding
     geo_url = "https://geocoding-api.open-meteo.com/v1/search"
     geo_params = {
         "name": city_name,
@@ -27,12 +33,13 @@ def get_weather(city_name):
     }
     
     try:
-        # Added timeout to prevent 502 Bad Gateway errors
-        geo_res = requests.get(geo_url, params=geo_params, timeout=5).json()
-    except Exception:
+        geo_res = requests.get(geo_url, params=geo_params, headers=headers, timeout=10).json()
+    except Exception as e:
+        print(f"Geocoding Error for {city_name}: {e}")
         return None
 
     if not geo_res or not geo_res.get("results"):
+        print(f"No geocoding results found for {city_name}")
         return None
 
     loc = geo_res["results"][0]
@@ -40,7 +47,7 @@ def get_weather(city_name):
     if lat is None or lon is None:
         return None
 
-    # Weather Forecast Request using proper params
+    # 2. Weather Forecast
     w_url = "https://api.open-meteo.com/v1/forecast"
     w_params = {
         "latitude": lat,
@@ -52,11 +59,13 @@ def get_weather(city_name):
     }
     
     try:
-        res = requests.get(w_url, params=w_params, timeout=5).json()
-    except Exception:
+        res = requests.get(w_url, params=w_params, headers=headers, timeout=10).json()
+    except Exception as e:
+        print(f"Weather API Error for {city_name}: {e}")
         return None
 
     if not res or "current" not in res or "daily" not in res:
+        print(f"Invalid weather data structure returned for {city_name}")
         return None
 
     current = res["current"]
@@ -88,7 +97,8 @@ def get_weather(city_name):
                 "min_temp": round(min_t) if min_t is not None else 0,
                 "icon": day_w["icon"]
             })
-        except Exception:
+        except Exception as e:
+            print(f"Error processing daily forecast day {i}: {e}")
             continue
 
     # Process Hourly Forecast Timeline
